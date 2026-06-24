@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>2026 台灣國際醫療展 · 座位查詢</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F3; --white: #FFFFFF; --ink: #1A1A1A; --ink-2: #4A4A4A; --ink-3: #8A8A8A;
+  --rule: #E0DDD8; --accent: #1B4F8A; --accent-light: #EBF1F9;
+  --blue: #1B4F8A; --blue-light: #EBF1F9;
+  --gold: #8B6914; --gold-light: #FBF5E6;
+  --green: #1A6B4A; --red: #B33A2A;
+}
+body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+
+.header { background:var(--accent); padding:20px 20px 16px; position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(0,0,0,0.15); }
+.header-tag { font-family:"DM Mono",monospace; font-size:9px; letter-spacing:2px; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-bottom:4px; }
+.header-title { font-size:17px; font-weight:700; color:#fff; margin-bottom:12px; }
+.conn-row { display:flex; align-items:center; gap:6px; margin-bottom:12px; }
+.conn-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); flex-shrink:0; transition:background .3s; }
+.conn-dot.ok { background:#4ADE80; } .conn-dot.err { background:#F87171; }
+.conn-lbl { font-family:"DM Mono",monospace; font-size:10px; color:rgba(255,255,255,0.6); }
+
+.search-wrap { position:relative; }
+.search-input { width:100%; padding:13px 44px 13px 44px; border-radius:10px; border:none; background:rgba(255,255,255,0.15); color:#fff; font-size:16px; font-family:"Noto Serif TC",serif; outline:none; transition:background .2s; }
+.search-input::placeholder { color:rgba(255,255,255,0.45); }
+.search-input:focus { background:rgba(255,255,255,0.22); }
+.s-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; pointer-events:none; }
+.clear-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:26px; height:26px; color:#fff; font-size:13px; cursor:pointer; display:none; align-items:center; justify-content:center; }
+.clear-btn.show { display:flex; }
+
+.stats-bar { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:14px 16px; background:var(--white); border-bottom:1px solid var(--rule); }
+@media(min-width:480px){ .stats-bar { grid-template-columns:repeat(4,1fr); } }
+.stat { background:var(--bg); border-radius:10px; padding:10px 12px; text-align:center; border:1px solid var(--rule); }
+.stat { text-align:center; }
+.stat-num { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; color:var(--accent); }
+.stat-lbl { font-size:10px; color:var(--ink-3); margin-top:1px; }
+
+.hint { padding:48px 20px; text-align:center; color:var(--ink-3); font-size:14px; line-height:1.8; }
+.hint-icon { font-size:42px; margin-bottom:12px; }
+
+.result-count { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); padding:12px 16px 6px; }
+.result-list { padding:0 16px 32px; display:flex; flex-direction:column; gap:10px; }
+
+.result-card.is-checked { opacity: 0.55; }
+.checkin-btn {
+  flex-shrink: 0; padding: 8px 12px; border-radius: 8px;
+  border: 1.5px solid #1A6B4A; background: #E8F5EE;
+  color: #1A6B4A; font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: "Noto Serif TC", serif;
+  white-space: nowrap; transition: all .15s;
+}
+.checkin-btn:hover { background: #1A6B4A; color: #fff; }
+.checkin-btn.done { background: #D1FAE5; border-color: #6EE7B7; color: #065F46; cursor: default; }
+.result-card { background:var(--white); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(0,0,0,0.06); border:1px solid var(--rule); animation:slideIn .18s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;} }
+
+.seat-badge { flex-shrink:0; width:56px; height:56px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.badge-a { background:var(--blue-light); }
+.badge-b { background:var(--accent-light); }
+.badge-c { background:var(--gold-light); }
+.badge-zone { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; line-height:1; }
+.badge-a .badge-zone { color:var(--blue); }
+.badge-b .badge-zone { color:var(--green); }
+.badge-c .badge-zone { color:var(--gold); }
+.badge-seat { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+
+.card-info { flex:1; min-width:0; }
+.card-name { font-size:14px; font-weight:700; line-height:1.4; color:var(--ink); margin-bottom:4px; }
+.card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
+.card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
+.card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
+
+.no-result { padding:40px 20px; text-align:center; color:var(--ink-3); font-size:14px; }
+
+.loading { display:flex; align-items:center; justify-content:center; padding:60px 20px; gap:10px; color:var(--ink-3); font-size:14px; }
+.spin { width:20px; height:20px; border:2px solid var(--rule); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg);} }
+
+.footer { text-align:center; padding:20px; font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); border-top:1px solid var(--rule); margin-top:8px; letter-spacing:.5px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">Taiwan International Medical & Healthcare Show 2026</div>
+  <div class="header-title">🏥 台灣國際醫療展 · 座位查詢</div>
+  <div class="conn-row">
+    <div class="conn-dot" id="conn-dot"></div>
+    <div class="conn-lbl" id="conn-lbl">連線中…</div>
+  </div>
+  <div class="search-wrap">
+    <span class="s-icon">🔍</span>
+    <input type="text" class="search-input" id="search"
+      placeholder="搜尋姓名、單位或座位編號…"
+      oninput="doSearch()" autocomplete="off" />
+    <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
+  </div>
+</div>
+
+<div class="stats-bar" id="stats-bar" style="display:none">
+  <div class="stat">
+    <div class="stat-num" id="st-checkin" style="color:var(--green);">0%</div>
+    <div class="stat-lbl">整體報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-checkin-sub">0 / 0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-ceremony" style="color:#E11D48;">0%</div>
+    <div class="stat-lbl">合影貴賓報到率</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);margin-top:2px;" id="st-ceremony-sub">0 / 0</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-empty" style="color:var(--gold);">0</div>
+    <div class="stat-lbl">空位數</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="st-total" style="color:var(--accent);">0</div>
+    <div class="stat-lbl">總席數</div>
+  </div>
+</div>
+
+<div id="main">
+  <div class="loading"><div class="spin"></div>載入資料中…</div>
+</div>
+
+<div class="footer" id="footer">2026 台灣國際醫療展 · 資料來源：Firebase 即時同步</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref,onValue}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const fb=initializeApp({
+  apiKey:"AIzaSyDpIV50vJg-t-AunMEiGJ-smcWnHsZiQLs",
+  authDomain:"medicalopen.firebaseapp.com",
+  databaseURL:"https://medicalopen-default-rtdb.firebaseio.com",
+  projectId:"medicalopen",
+  storageBucket:"medicalopen.firebasestorage.app",
+  messagingSenderId:"985069987689",
+  appId:"1:985069987689:web:84fda30fe66cac70bdfff8"
+},'medicalopen-lookup');
+
+const db=getDatabase(fb);
+const PROJECT_ID="event_A";
+const DB_URL="https://medicalopen-default-rtdb.firebaseio.com";
+
+let loaded=false;
+
+function setConn(s){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-lbl');
+  if(s==='ok'){dot.className='conn-dot ok';lbl.textContent='已連線 · 即時同步';}
+  else{dot.className='conn-dot err';lbl.textContent='連線失敗';}
+}
+
+// ── 即時同步 onValue ──
+let loaded=false;
+
+function updateStats(){
+  const total=Object.keys(DATA).length;
+  const filled=Object.values(DATA).filter(v=>v).length;
+  const checkinCount=Object.keys(CHECKINS).length;
+  const empty=total-filled;
+  
+  // 合影貴賓
+  const ceremonySeats=Object.keys(TAGS).filter(c=>TAGS[c]==='ceremony'||TAGS[c]==='photo');
+  const ceremonyCheckin=ceremonySeats.filter(c=>CHECKINS[c]).length;
+  const ceremonyTotal=ceremonySeats.length;
+  
+  const checkinPct=filled>0?Math.round(checkinCount/filled*100):0;
+  const ceremonyPct=ceremonyTotal>0?Math.round(ceremonyCheckin/ceremonyTotal*100):0;
+  
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-empty').textContent=empty;
+  document.getElementById('st-checkin').textContent=checkinPct+'%';
+  document.getElementById('st-checkin-sub').textContent=checkinCount+' / '+filled;
+  document.getElementById('st-ceremony').textContent=ceremonyPct+'%';
+  document.getElementById('st-ceremony-sub').textContent=ceremonyCheckin+' / '+ceremonyTotal;
+  document.getElementById('stats-bar').style.display='';
+  
+  const now=new Date();
+  document.getElementById('footer').textContent=
+    '2026 台灣國際醫療展 · 最後同步 '+
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+}
+
+// seats_master
+onValue(ref(db,PROJECT_ID+'/seats_master2026'),snap=>{
+  DATA={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,n])=>DATA[c]=n||'');
+  if(loaded){ updateStats(); doSearch(); }
+},()=>setConn('err'));
+
+// assignments
+onValue(ref(db,PROJECT_ID+'/assignments2026'),snap=>{
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+  if(loaded){ updateStats(); doSearch(); }
+});
+
+// tags (合影/揭幕標記)
+onValue(ref(db,PROJECT_ID+'/tags2026'),snap=>{
+  TAGS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,t])=>{ TAGS[c]=t; });
+  if(loaded) updateStats();
+});
+
+// checkins 即時監聽
+onValue(ref(db,PROJECT_ID+'/checkins2026'),snap=>{
+  CHECKINS={};
+  const d=snap.val()||{};
+  Object.entries(d).forEach(([c,v])=>{ CHECKINS[c]=v; });
+  loaded=true;
+  setConn('ok');
+  updateStats();
+  doSearch();
+},()=>{
+  loaded=true;
+  setConn('err');
+});
+
+window.doSearch=function(){
+  const kw=(document.getElementById('search').value||'').trim();
+  document.getElementById('clear-btn').classList.toggle('show',kw.length>0);
+  const main=document.getElementById('main');
+
+  if(!loaded){return;}
+
+  if(!kw){
+    main.innerHTML='<div class="hint"><div class="hint-icon">🔍</div><div>輸入姓名、單位或座位編號<br>即可查詢</div></div>';
+    return;
+  }
+
+  const kwL=kw.toLowerCase();
+  const results=Object.entries(DATA).filter(([code,name])=>
+    code.toLowerCase().includes(kwL)||(name&&name.toLowerCase().includes(kwL))
+  );
+
+  if(!results.length){
+    main.innerHTML=`<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
+    return;
+  }
+
+  const kwE=kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp(`(${kwE})`,'gi');
+
+  // 解析座位碼 → 友善描述
+  function parseSeatCode(code) {
+    // 主桌：H1-3
+    if (/^H\d+-\d+$/.test(code)) {
+      const seatNum = code.split('-')[1];
+      return { icon:'⭐', label:'主桌', detail:`主桌 第 ${seatNum} 席`, badgeTop:'主桌', badgeBot:`第${seatNum}席`, color:'gold' };
+    }
+    // 圓桌：R1_T2-5
+    const m = code.match(/^R(\d+)_T(\d+)-(\d+)$/);
+    if (m) {
+      const [,row,table,seat] = m;
+      return { icon:'🔵', label:`第${table}桌`, detail:`第 ${table} 桌・第 ${seat} 席`, badgeTop:`第${table}桌`, badgeBot:`第${seat}席`, color:'blue' };
+    }
+    // 方陣：A1-3、B2-5
+    const m2 = code.match(/^([A-Z])(\d+)-(\d+)$/);
+    if (m2) {
+      const [,zone,row,seat] = m2;
+      return { icon:'🟦', label:`${zone}區`, detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:`${zone}區`, badgeBot:`${row}排${seat}席`, color:zone==='A'?'blue':zone==='B'?'green':'gold' };
+    }
+    return { icon:'📍', label:code, detail:code, badgeTop:code, badgeBot:'', color:'blue' };
+  }
+
+  let html=`<div class="result-count">找到 ${results.length} 筆結果</div><div class="result-list">`;
+  results.forEach(([code,name])=>{
+    const p = parseSeatCode(code);
+    const bc = `badge-${p.color}`;
+    const hn = name ? name.replace(re,'<mark>$1</mark>') : '（空位）';
+    const hc = code.replace(re,'<mark>$1</mark>');
+    html+=`<div class="result-card ${CHECKINS[code]?'is-checked':''}">
+      <div class="seat-badge ${bc}">
+        <div class="badge-zone" style="font-size:13px;font-weight:700;">${p.badgeTop}</div>
+        <div class="badge-seat">${p.badgeBot}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${hn}</div>
+        <div class="card-seat">座位編號：${hc}</div>
+        <div class="card-zone">${p.detail}</div>
+      </div>
+      <button class="checkin-btn ${CHECKINS[code]?'done':''}"
+        onclick="toggleCheckin('${code}',${!CHECKINS[code]})">
+        ${CHECKINS[code]?'✅ 已報到':'報到'}
+      </button>
+    </div>`;
+  });
+  html+='</div>';
+  main.innerHTML=html;
+};
+
+window.toggleCheckin=async function(code, checkIn){
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const url=`${DB_URL}/${PROJECT_ID}/checkins2026/${code}.json`;
+  if(checkIn){
+    await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({time,name:DATA[code]||''})});
+    CHECKINS[code]={time};
+  }else{
+    await fetch(url,{method:'DELETE'});
+    delete CHECKINS[code];
+  }
+  doSearch();
+};
+
+window.clearSearch=function(){
+  document.getElementById('search').value='';
+  document.getElementById('clear-btn').classList.remove('show');
+  doSearch();
+  document.getElementById('search').focus();
+};
+</script>
+</body>
+</html>
