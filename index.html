@@ -377,6 +377,7 @@ async function saveAll(){
   try{
     const oo={}; Object.keys(occupied).forEach(k => oo[k] = '佔用');
     await Promise.all([
+      fetch(`${DB_URL}/${PROJECT_ID}/seats_master2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(seatMap).length?seatMap:null)}),
       fetch(`${DB_URL}/${PROJECT_ID}/assignments2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(asgn).length?asgn:null)}),
       fetch(`${DB_URL}/${PROJECT_ID}/tags2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(tags).length?tags:null)}),
       fetch(`${DB_URL}/${PROJECT_ID}/seats2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(oo).length?oo:null)}),
@@ -837,6 +838,9 @@ window.renderChips=function renderChips(){
 function removeGuest(g){
   const idx=guests.indexOf(g);if(idx===-1)return;guests.splice(idx,1);
   Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];}});
+  // 同時清除座位庫架構（seats_master2026）裡殘留的同名欄位，
+  // 否則重新整理時 rebuildGuests() 會從 seatMap 把這個名字撈回來
+  Object.entries(seatMap).forEach(([c,n])=>{if(n===g){seatMap[c]='';}});
   refreshAll();scheduleSave();toast('已移除：'+g.substring(0,15)+'...','tin');
 }
 window.addGuest=function(){
