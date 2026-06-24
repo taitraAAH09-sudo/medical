@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>醫療展晚會 · 座位查詢</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F6F3; --white: #FFFFFF; --ink: #1A1A1A; --ink-2: #4A4A4A; --ink-3: #8A8A8A;
+  --rule: #E0DDD8; --accent: #1B4F8A; --accent-light: #EBF1F9;
+  --blue: #1B4F8A; --blue-light: #EBF1F9;
+  --gold: #8B6914; --gold-light: #FBF5E6;
+  --green: #1A6B4A; --red: #B33A2A;
+}
+body { font-family:"Noto Serif TC",serif; background:var(--bg); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased; }
+
+.header { background:var(--accent); padding:20px 20px 16px; position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(0,0,0,0.15); }
+.header-tag { font-family:"DM Mono",monospace; font-size:9px; letter-spacing:2px; color:rgba(255,255,255,0.55); text-transform:uppercase; margin-bottom:4px; }
+.header-title { font-size:17px; font-weight:700; color:#fff; margin-bottom:12px; }
+.conn-row { display:flex; align-items:center; gap:6px; margin-bottom:12px; }
+.conn-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.3); flex-shrink:0; transition:background .3s; }
+.conn-dot.ok { background:#4ADE80; } .conn-dot.err { background:#F87171; }
+.conn-lbl { font-family:"DM Mono",monospace; font-size:10px; color:rgba(255,255,255,0.6); }
+
+.search-wrap { position:relative; }
+.search-input { width:100%; padding:13px 44px 13px 44px; border-radius:10px; border:none; background:rgba(255,255,255,0.15); color:#fff; font-size:16px; font-family:"Noto Serif TC",serif; outline:none; transition:background .2s; }
+.search-input::placeholder { color:rgba(255,255,255,0.45); }
+.search-input:focus { background:rgba(255,255,255,0.22); }
+.s-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:17px; pointer-events:none; }
+.clear-btn { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.2); border:none; border-radius:50%; width:26px; height:26px; color:#fff; font-size:13px; cursor:pointer; display:none; align-items:center; justify-content:center; }
+.clear-btn.show { display:flex; }
+
+.stats-bar { display:flex; gap:16px; padding:14px 16px; background:var(--white); border-bottom:1px solid var(--rule); }
+.stat { text-align:center; }
+.stat-num { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; color:var(--accent); }
+.stat-lbl { font-size:10px; color:var(--ink-3); margin-top:1px; }
+
+.hint { padding:48px 20px; text-align:center; color:var(--ink-3); font-size:14px; line-height:1.8; }
+.hint-icon { font-size:42px; margin-bottom:12px; }
+
+.result-count { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); padding:12px 16px 6px; }
+.result-list { padding:0 16px 32px; display:flex; flex-direction:column; gap:10px; }
+
+.result-card { background:var(--white); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(0,0,0,0.06); border:1px solid var(--rule); animation:slideIn .18s ease; }
+@keyframes slideIn { from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;} }
+
+.seat-badge { flex-shrink:0; width:56px; height:56px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+.badge-a { background:var(--blue-light); }
+.badge-b { background:var(--accent-light); }
+.badge-c { background:var(--gold-light); }
+.badge-zone { font-family:"DM Mono",monospace; font-size:20px; font-weight:700; line-height:1; }
+.badge-a .badge-zone { color:var(--blue); }
+.badge-b .badge-zone { color:var(--green); }
+.badge-c .badge-zone { color:var(--gold); }
+.badge-seat { font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); }
+
+.card-info { flex:1; min-width:0; }
+.card-name { font-size:14px; font-weight:700; line-height:1.4; color:var(--ink); margin-bottom:4px; }
+.card-name mark { background:#FEF08A; color:var(--ink); border-radius:2px; padding:0 1px; }
+.card-seat { font-family:"DM Mono",monospace; font-size:11px; color:var(--ink-3); }
+.card-zone { font-size:11px; color:var(--ink-3); margin-top:2px; }
+
+.no-result { padding:40px 20px; text-align:center; color:var(--ink-3); font-size:14px; }
+
+.loading { display:flex; align-items:center; justify-content:center; padding:60px 20px; gap:10px; color:var(--ink-3); font-size:14px; }
+.spin { width:20px; height:20px; border:2px solid var(--rule); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to{transform:rotate(360deg);} }
+
+.footer { text-align:center; padding:20px; font-family:"DM Mono",monospace; font-size:10px; color:var(--ink-3); border-top:1px solid var(--rule); margin-top:8px; letter-spacing:.5px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">Dinner Banquet 2026</div>
+  <div class="header-title">🥂 醫療展晚會 · 座位查詢</div>
+  <div class="conn-row">
+    <div class="conn-dot" id="conn-dot"></div>
+    <div class="conn-lbl" id="conn-lbl">連線中…</div>
+  </div>
+  <div class="search-wrap">
+    <span class="s-icon">🔍</span>
+    <input type="text" class="search-input" id="search"
+      placeholder="搜尋姓名、單位或座位編號…"
+      oninput="doSearch()" autocomplete="off" />
+    <button class="clear-btn" id="clear-btn" onclick="clearSearch()">✕</button>
+  </div>
+</div>
+
+<div class="stats-bar" id="stats-bar" style="display:none">
+  <div class="stat"><div class="stat-num" id="st-total">0</div><div class="stat-lbl">總席數</div></div>
+  <div class="stat"><div class="stat-num" id="st-filled">0</div><div class="stat-lbl">已分配</div></div>
+  <div class="stat"><div class="stat-num" id="st-empty">0</div><div class="stat-lbl">空位</div></div>
+</div>
+
+<div id="main">
+  <div class="loading"><div class="spin"></div>載入資料中…</div>
+</div>
+
+<div class="footer" id="footer">醫療展晚會 · 資料來源：Firebase 即時同步</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref,onValue}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const fb=initializeApp({
+  apiKey:"AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
+  authDomain:"taitra-table.firebaseapp.com",
+  databaseURL:"https://taitra-table-default-rtdb.firebaseio.com",
+  projectId:"taitra-table",
+  storageBucket:"taitra-table.firebasestorage.app",
+  messagingSenderId:"802855818617",
+  appId:"1:802855818617:web:b7cf3b45e13b70ae660ba8"
+},'taitra-table-dinner-lookup');
+
+const db=getDatabase(fb);
+const PROJECT_ID="event_B";
+const DB_URL="https://taitra-table-default-rtdb.firebaseio.com";
+
+let DATA={};
+let loaded=false;
+
+function setConn(s){
+  const dot=document.getElementById('conn-dot');
+  const lbl=document.getElementById('conn-lbl');
+  if(s==='ok'){dot.className='conn-dot ok';lbl.textContent='已連線 · 即時同步';}
+  else{dot.className='conn-dot err';lbl.textContent='連線失敗';}
+}
+
+async function loadData(){
+  try{
+    const [r1,r2]=await Promise.all([
+      fetch(`${DB_URL}/${PROJECT_ID}/seats_master2026.json`).then(r=>r.json()),
+      fetch(`${DB_URL}/${PROJECT_ID}/assignments2026.json`).then(r=>r.json()),
+    ]);
+    DATA={};
+    // 先填入 master（包含空位）
+    if(r1) Object.entries(r1).forEach(([c,n])=>DATA[c]=n||'');
+    // assignments 覆蓋（以分配資料為主）
+    if(r2) Object.entries(r2).forEach(([c,n])=>{ if(n) DATA[c]=n; });
+
+    const total=Object.keys(DATA).length;
+    const filled=Object.values(DATA).filter(v=>v).length;
+
+    document.getElementById('st-total').textContent=total;
+    document.getElementById('st-filled').textContent=filled;
+    document.getElementById('st-empty').textContent=total-filled;
+    document.getElementById('stats-bar').style.display='flex';
+
+    const now=new Date();
+    document.getElementById('footer').textContent=
+      '醫療展晚會 · 最後同步 '+
+      now.getHours().toString().padStart(2,'0')+':'+
+      now.getMinutes().toString().padStart(2,'0');
+
+    loaded=true;
+    setConn('ok');
+    doSearch();
+  }catch(e){
+    console.error(e);
+    setConn('error');
+    document.getElementById('main').innerHTML=
+      '<div class="hint"><div class="hint-icon">⚠️</div><div>資料載入失敗，請重新整理頁面</div></div>';
+  }
+}
+
+loadData();
+setInterval(loadData, 30000);
+
+window.doSearch=function(){
+  const kw=(document.getElementById('search').value||'').trim();
+  document.getElementById('clear-btn').classList.toggle('show',kw.length>0);
+  const main=document.getElementById('main');
+
+  if(!loaded){return;}
+
+  if(!kw){
+    main.innerHTML='<div class="hint"><div class="hint-icon">🔍</div><div>輸入姓名、單位或座位編號<br>即可查詢</div></div>';
+    return;
+  }
+
+  const kwL=kw.toLowerCase();
+  const results=Object.entries(DATA).filter(([code,name])=>
+    code.toLowerCase().includes(kwL)||(name&&name.toLowerCase().includes(kwL))
+  );
+
+  if(!results.length){
+    main.innerHTML=`<div class="no-result">🔍 找不到「${kw}」相關座位</div>`;
+    return;
+  }
+
+  const kwE=kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp(`(${kwE})`,'gi');
+
+  // 解析座位碼 → 友善描述
+  function parseSeatCode(code) {
+    // 主桌：H1-3
+    if (/^H\d+-\d+$/.test(code)) {
+      const seatNum = code.split('-')[1];
+      return { icon:'⭐', label:'主桌', detail:`主桌 第 ${seatNum} 席`, badgeTop:'主桌', badgeBot:`第${seatNum}席`, color:'gold' };
+    }
+    // 圓桌：R1_T2-5
+    const m = code.match(/^R(\d+)_T(\d+)-(\d+)$/);
+    if (m) {
+      const [,row,table,seat] = m;
+      return { icon:'🔵', label:`第${table}桌`, detail:`第 ${table} 桌・第 ${seat} 席`, badgeTop:`第${table}桌`, badgeBot:`第${seat}席`, color:'blue' };
+    }
+    // 方陣：A1-3、B2-5
+    const m2 = code.match(/^([A-Z])(\d+)-(\d+)$/);
+    if (m2) {
+      const [,zone,row,seat] = m2;
+      return { icon:'🟦', label:`${zone}區`, detail:`${zone} 區・第 ${row} 排・第 ${seat} 席`, badgeTop:`${zone}區`, badgeBot:`${row}排${seat}席`, color:zone==='A'?'blue':zone==='B'?'green':'gold' };
+    }
+    return { icon:'📍', label:code, detail:code, badgeTop:code, badgeBot:'', color:'blue' };
+  }
+
+  let html=`<div class="result-count">找到 ${results.length} 筆結果</div><div class="result-list">`;
+  results.forEach(([code,name])=>{
+    const p = parseSeatCode(code);
+    const bc = `badge-${p.color}`;
+    const hn = name ? name.replace(re,'<mark>$1</mark>') : '（空位）';
+    const hc = code.replace(re,'<mark>$1</mark>');
+    html+=`<div class="result-card">
+      <div class="seat-badge ${bc}">
+        <div class="badge-zone" style="font-size:13px;font-weight:700;">${p.badgeTop}</div>
+        <div class="badge-seat">${p.badgeBot}</div>
+      </div>
+      <div class="card-info">
+        <div class="card-name">${hn}</div>
+        <div class="card-seat">座位編號：${hc}</div>
+        <div class="card-zone">${p.detail}</div>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  main.innerHTML=html;
+};
+
+window.clearSearch=function(){
+  document.getElementById('search').value='';
+  document.getElementById('clear-btn').classList.remove('show');
+  doSearch();
+  document.getElementById('search').focus();
+};
+</script>
+</body>
+</html>
