@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 台灣國際醫療展 · 座位系統</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#F0F4F8;padding:16px;}
+h1{font-size:17px;font-weight:600;color:#1a365d;margin-bottom:.75rem;display:flex;align-items:center;gap:10px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#5DCAA5;flex-shrink:0;}
+.sync-dot.off{background:#FCA5A5;}
+.sync-dot.saving{background:#FCD34D;animation:pulse .8s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-lbl{font-size:11px;color:#9CA3AF;font-weight:400;}
+.top{background:#fff;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;display:flex;gap:1.5rem;flex-wrap:wrap;align-items:center;border:0.5px solid #E5E7EB;}
+.stats{display:flex;gap:1.5rem;flex-wrap:wrap;flex:1;}
+.stat{display:flex;flex-direction:column;}
+.sv{font-size:20px;font-weight:500;color:#111;}.sl{font-size:11px;color:#9CA3AF;}
+.btns{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{font-size:12px;padding:7px 13px;border-radius:8px;border:0.5px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;white-space:nowrap;transition:all .2s;}
+.btn:hover{background:#F9FAFB;}
+.btn-primary{background:#185FA5;color:#fff;border-color:#185FA5;}
+.btn-primary:hover{background:#0C447C;color:#fff;}
+.btn-ex{background:#185FA5;color:#fff;border-color:#185FA5;font-size:13px;padding:8px 16px;}
+.btn-ex:hover{background:#0C447C;}
+.btn-map{background:#0F6E56;color:#fff;border-color:#0F6E56;font-size:13px;padding:8px 16px;}
+.btn-map:hover{background:#085041;}
+.btn-rst{border-color:#FCA5A5;color:#B91C1C;}
+.btn-setting{border-color:#93C5FD;color:#1D4ED8;background:#EFF6FF;font-weight:600;}
+.btn-setting:hover{background:#DBEAFE;}
+.pbar{height:4px;background:#F3F4F6;border-radius:99px;overflow:hidden;margin-bottom:3px;}
+.pfill{height:100%;background:linear-gradient(90deg,#185FA5,#1D9E75);border-radius:99px;transition:width .3s;}
+.toast{border-radius:8px;padding:9px 16px;font-size:13px;margin-bottom:.75rem;display:none;font-weight:500;position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.tok{background:#D1FAE5;color:#065F46;border:0.5px solid #6EE7B7;}
+.ter{background:#FEE2E2;color:#991B1B;border:0.5px solid #FCA5A5;}
+.tin{background:#DBEAFE;color:#1D4ED8;border:0.5px solid #93C5FD;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.75rem;align-items:center;font-size:11px;color:#6B7280;}
+.leg{display:flex;align-items:center;gap:4px;}
+.ld{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+.venue{background:#fff;border:0.5px solid #E5E7EB;border-radius:12px;padding:1rem;overflow-x:auto;margin-bottom:1rem;width:100%;min-height:200px;}
+.stage{text-align:center;font-size:11px;color:#9CA3AF;letter-spacing:2px;border:0.5px solid #E5E7EB;border-radius:6px;padding:4px;margin-bottom:.6rem;}
+
+/* ── 方陣專屬樣式 ── */
+.zone-header-row{display:flex;margin-bottom:4px;padding-left:26px;width:100%;}
+.zh{text-align:center;font-size:10px;font-weight:600;padding:2px 0;border-radius:4px;}
+.zh-a{color:#185FA5;background:#DBEAFE;}
+.zh-b{color:#065F46;background:#D1FAE5;}
+.zh-c{color:#92400E;background:#FEF3C7;}
+.zh-d{color:#5B21B6;background:#EDE9FE;}
+.zh-e{color:#9D174D;background:#FCE7F3;}
+.vrow{display:flex;align-items:center;gap:0;margin-bottom:2px;width:100%;}
+.rl{font-size:10px;color:#9CA3AF;width:24px;text-align:right;flex-shrink:0;padding-right:4px;}
+.vzone{display:flex;}
+
+/* ── 圓桌專屬樣式 ── */
+.round-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; padding: 20px 0; }
+.round-table-wrap { position: relative; width: 150px; height: 150px; }
+.round-table-center { position: absolute; inset: 24px; background: #E5E7EB; border: 2px solid #D1D5DB; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #4B5563; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.round-seat { position: absolute; width: 30px; height: 30px; border-radius: 50%; font-size: 10px; }
+
+/* ── 座位共用樣式 ── */
+.seat{height:48px;border-radius:4px;cursor:pointer;font-size:9px;line-height:1.3;display:flex;align-items:center;justify-content:center;text-align:center;flex-shrink:0;border:0.5px solid;transition:all .15s;overflow:hidden;padding:2px 3px;word-break:break-all;white-space:normal;}
+.seat:hover{transform:scale(1.15);z-index:2;position:relative;}
+.sa{background:#E6F1FB;border-color:#85B7EB;color:#185FA5;}
+.sb{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
+.sc{background:#FAEEDA;border-color:#EF9F27;color:#854F0B;}
+.sd{background:#F3E8FF;border-color:#C084FC;color:#7E22CE;}
+.se{background:#FCE7F3;border-color:#F472B6;color:#BE185D;}
+
+.sa.filled{background:#378ADD;border-color:#185FA5;color:#fff;cursor:grab;}
+.sb.filled{background:#1D9E75;border-color:#0F6E56;color:#fff;cursor:grab;}
+.sc.filled{background:#BA7517;border-color:#854F0B;color:#fff;cursor:grab;}
+.sd.filled{background:#9333EA;border-color:#6B21A8;color:#fff;cursor:grab;}
+.se.filled{background:#DB2777;border-color:#9D174D;color:#fff;cursor:grab;}
+
+.seat.filled:active{cursor:grabbing;}
+.seat.drag-over{transform:scale(1.2);box-shadow:0 0 0 3px #F59E0B;z-index:5;}
+.seat.drag-src{opacity:.35;}
+.seat.ceremony{background:#E11D48!important;border-color:#9F1239!important;color:#fff!important;}
+.seat.photo{background:#F59E0B!important;border-color:#B45309!important;color:#fff!important;}
+.seat.occupied{background:#6366F1!important;border-color:#4338CA!important;color:#fff!important;}
+.seat.found{background:#FEF08A!important;border-color:#CA8A04!important;color:#713F12!important;box-shadow:0 0 0 3px #FDE047;animation:findpulse 1s ease-in-out 2;}
+.seat.checked-in{background:#D1D5DB!important;border-color:#9CA3AF!important;color:#6B7280!important;cursor:default!important;position:relative;}
+.seat.checked-in::after{content:"✓";position:absolute;top:1px;right:2px;font-size:8px;color:#6B7280;}
+@keyframes findpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2);box-shadow:0 0 0 5px #FDE047;}}
+
+.panel{background:#fff;border:0.5px solid #E5E7EB;border-radius:12px;padding:12px;margin-bottom:1rem;}
+.panel-hdr{font-size:12px;font-weight:600;color:#111;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.count{font-size:10px;background:#F3F4F6;color:#6B7280;padding:1px 7px;border-radius:99px;font-weight:400;}
+.sr{display:flex;gap:6px;margin-bottom:8px;}
+.sr input{font-size:12px;flex:1;padding:6px 8px;border-radius:6px;border:0.5px solid #E5E7EB;background:#F9FAFB;color:#111;outline:none;}
+.sr input:focus{border-color:#93C5FD;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;padding:2px;}
+.chip{font-size:11px;padding:4px 22px 4px 10px;border-radius:99px;background:#F3F4F6;color:#6B7280;border:0.5px solid #E5E7EB;cursor:grab;white-space:nowrap;user-select:none;position:relative;}
+.chip:hover{border-color:#185FA5;color:#185FA5;}
+.chip.dragging{opacity:.4;}
+.chip-x{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#CBD5E1;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;padding:0;line-height:1;}
+.chip-x:hover{background:#EF4444;}
+select.gs{font-size:12px;width:100%;padding:6px 8px;border-radius:6px;border:0.5px solid #E5E7EB;background:#F9FAFB;color:#111;margin-bottom:6px;outline:none;}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:20px 16px 28px;}
+.modal-handle{width:32px;height:3px;background:#E5E7EB;border-radius:2px;margin:0 auto 14px;}
+.modal-code{font-size:16px;font-weight:600;color:#111;margin-bottom:4px;}
+.modal-name{font-size:12px;color:#6B7280;margin-bottom:14px;background:#F9FAFB;padding:8px 10px;border-radius:8px;min-height:32px;}
+.modal-section{font-size:11px;font-weight:600;color:#9CA3AF;margin-bottom:6px;letter-spacing:.5px;}
+.tag-row{display:flex;gap:8px;margin-bottom:10px;}
+.tag-btn{flex:1;padding:9px;border-radius:10px;border:1.5px solid;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;}
+.tag-btn.ceremony-btn{border-color:#E11D48;background:#FFF1F2;color:#9F1239;}
+.tag-btn.ceremony-btn.active{background:#E11D48;color:#fff;}
+.tag-btn.photo-btn{border-color:#F59E0B;background:#FFFBEB;color:#B45309;}
+.tag-btn.photo-btn.active{background:#F59E0B;color:#fff;}
+.tag-btn.occ-btn{border-color:#6366F1;background:#EEF2FF;color:#4338CA;}
+.tag-btn.occ-btn.active{background:#6366F1;color:#fff;}
+.modal-close{width:100%;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;cursor:pointer;margin-top:4px;}
+.checkin-modal-btn{width:100%;padding:11px;border-radius:10px;border:1.5px solid #16A34A;background:#F0FDF4;color:#15803D;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:6px;transition:all .15s;}
+.checkin-modal-btn:hover{background:#16A34A;color:#fff;}
+.checkin-modal-btn.done{background:#D1FAE5;border-color:#6EE7B7;color:#065F46;cursor:default;}
+.checkin-modal-btn.undo{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C;}
+.checkin-modal-btn.undo:hover{background:#EF4444;color:#fff;}
+#dtt{position:fixed;pointer-events:none;z-index:9999;background:#1e293b;color:#fff;font-size:12px;padding:5px 10px;border-radius:6px;white-space:nowrap;display:none;max-width:220px;overflow:hidden;}
+
+/* ── 架構設定 Modal 專屬樣式 ── */
+.layout-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; text-align: left; }
+.layout-form label { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 4px; display: block; }
+.layout-form input, .layout-form select { font-size: 14px; padding: 10px; border-radius: 8px; border: 1px solid #D1D5DB; background: #F9FAFB; width: 100%; outline: none; }
+.layout-form input:focus, .layout-form select:focus { border-color: #3B82F6; }
+.hint-text { font-size: 10px; color: #9CA3AF; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- 密碼保護：透過右上角鎖頭按鈕登入 -->
+<div id="dtt"></div>
+
+<div class="modal-bg" id="modal-bg" onclick="closeBg(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-code" id="m-code"></div>
+    <div class="modal-name" id="m-name"></div>
+    <div id="m-assign-sec">
+      <div class="modal-section">指派賓客</div>
+      <select class="gs" id="m-select" onchange="doAssignModal(this.value)"></select>
+      <button class="btn" id="m-clear-btn" style="width:100%;margin-bottom:12px;" onclick="clearSeat()">✕ 清除此座位</button>
+    </div>
+    <div id="m-tag-sec" style="display:none;">
+      <div class="modal-section" style="margin-bottom:8px;">活動標記</div>
+      <div class="tag-row">
+        <button class="tag-btn ceremony-btn" id="btn-ceremony" onclick="toggleTag('ceremony')">🎖 揭幕</button>
+        <button class="tag-btn photo-btn" id="btn-photo" onclick="toggleTag('photo')">📸 合影</button>
+        <button class="tag-btn occ-btn" id="btn-occ" onclick="toggleOccupied()">🪑 佔用</button>
+      </div>
+    </div>
+    <button id="m-checkin-btn" class="checkin-modal-btn" onclick="toggleModalCheckin()" style="display:none;"></button>
+    <button class="modal-close" onclick="closeModal()">關閉</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="layout-modal-bg">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-code">⚙️ 建立座位庫架構</div>
+    <div class="modal-name" style="background:#FFFBEB; color:#B45309;">注意：這將會由前台直接覆寫 Firebase 裡的座位結構 (seats_master2026)。同 ID 的座位名單會保留，不會影響已報到的狀態。</div>
+    
+    <div class="layout-form">
+      <div>
+        <label>排版模式</label>
+        <select id="l-mode">
+          <option value="grid">方陣排排坐 (如 COMPUTEX 典禮)</option>
+          <option value="round">圓桌晚宴</option>
+        </select>
+      </div>
+
+      <div id="l-grid-settings">
+        <div style="margin-bottom: 12px;">
+          <label>總排數</label>
+          <input type="number" id="l-rows" value="10" min="1">
+        </div>
+        <div>
+          <label>各區座位數 (由左至右)</label>
+          <input type="text" id="l-zones" value="6,9,6" placeholder="例如: 6,9,6 或 10,10">
+          <div class="hint-text">請用半形逗號分隔，數字代表該區一排有幾個位子。例如輸入 6,9,6 代表分 A,B,C 三區。</div>
+        </div>
+      </div>
+
+      <div id="l-round-settings" style="display: none;">
+        <div style="margin-bottom: 12px;">
+          <label>總桌數</label>
+          <input type="number" id="l-tables" value="12" min="1">
+        </div>
+        <div>
+          <label>每桌人數 (椅數)</label>
+          <input type="number" id="l-seats" value="10" min="1">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-layout-apply" style="width:100%; padding:12px; font-size:14px;">套用並寫入資料庫</button>
+    <button class="modal-close" id="btn-layout-close">取消</button>
+  </div>
+</div>
+
+<h1>🎟 2026 台灣國際醫療展 · 座位系統
+  <div class="sync-dot off" id="sync-dot"></div>
+  <span class="sync-lbl" id="sync-lbl">連線中...</span>
+</h1>
+<div class="top">
+  <div class="stats">
+    <div class="stat"><span class="sv" id="st-total">0</span><span class="sl">總席數</span></div>
+    <div class="stat"><span class="sv" id="sa">0</span><span class="sl">已分配</span></div>
+    <div class="stat"><span class="sv" id="se">0</span><span class="sl">空位</span></div>
+    <div class="stat"><span class="sv" id="sg">0</span><span class="sl">賓客</span></div>
+  </div>
+  <div class="btns">
+    <button class="btn btn-setting" id="btn-setting">⚙️ 架構設定</button>
+    <button class="btn" style="background:#7C3AED;color:#fff;border-color:#7C3AED;" onclick="document.getElementById('excel-upload-input').click()">📂 上傳 Excel 更新座位</button>
+    <input type="file" id="excel-upload-input" accept=".xlsx,.xls" style="display:none">
+    <button class="btn btn-ex" id="exbtn" onclick="doExport()">⬇ 匯出 XLSX</button>
+    <button class="btn" style="background:#1A6B4A;color:#fff;border-color:#1A6B4A;" onclick="window.open('https://taitraaah09-sudo.github.io/medical/lookup.html','_blank')">🔍 手機查詢</button>
+    <button class="btn btn-rst" onclick="doReset()">⚠️ 重置</button>
+  </div>
+</div>
+<div class="pbar"><div class="pfill" id="pf" style="width:0%"></div></div>
+<div style="font-size:11px;color:#9CA3AF;margin:3px 0 .75rem;text-align:right;" id="ptxt">載入中...</div>
+<div class="toast" id="toast"></div>
+
+<div class="legend">
+  <div class="leg"><div class="ld" style="background:#378ADD;border:0.5px solid #185FA5;"></div>已分配</div>
+  <div class="leg"><div class="ld" style="background:#E11D48;border:0.5px solid #9F1239;"></div>揭幕</div>
+  <div class="leg"><div class="ld" style="background:#F59E0B;border:0.5px solid #B45309;"></div>合影</div>
+  <div class="leg"><div class="ld" style="background:#6366F1;border:0.5px solid #4338CA;"></div>佔用</div>
+  <span style="color:#D1D5DB;">|</span>
+  <span style="font-size:10px;color:#9CA3AF;">✦ 拖曳分配 · 點選標記</span>
+</div>
+
+<div class="venue" id="venue-wrap">
+  <div class="stage">STAGE / 舞台 (資料載入中...)</div>
+  <div id="vr"></div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">賓客名單 <span class="count" id="uc-count">0 未分配</span></div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+    <div class="sr" style="margin-bottom:0;">
+      <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;align-self:center;">🔍 搜尋</span>
+      <input type="text" id="gs" placeholder="搜尋賓客姓名或公司..." oninput="renderChips()" />
+    </div>
+    <div class="sr" style="margin-bottom:0;">
+      <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;align-self:center;">➕ 新增</span>
+      <input type="text" id="gi" placeholder="輸入新賓客名字，按 Enter" onkeydown="if(event.key==='Enter')addGuest()" />
+      <button class="btn" onclick="addGuest()">新增</button>
+    </div>
+  </div>
+  <div class="chips" id="chips"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// 🌟 已經將被刪除的金鑰 (messagingSenderId 與 appId) 完整補回
+const fb=initializeApp({
+    apiKey: "AIzaSyDpIV50vJg-t-AunMEiGJ-smcWnHsZiQLs",
+    authDomain: "medicalopen.firebaseapp.com",
+    databaseURL: "https://medicalopen-default-rtdb.firebaseio.com",
+    projectId: "medicalopen",
+    storageBucket: "medicalopen.firebasestorage.app",
+    messagingSenderId: "985069987689",
+    appId: "1:985069987689:web:84fda30fe66cac70bdfff8"
+}, "medicalopen-main");
+const db = getDatabase(fb);
+// --- 在這裡設定你的專案代號 ---
+const PROJECT_ID = "event_A";
+const ADMIN_PWD = 'medical2026'; // 只要改這裡！例如改成 "event_B" 或 "dinner_2026"
+// -----------------------------
+
+// 將路徑改為加上 PROJECT_ID 的格式
+const masterRef = ref(db, PROJECT_ID + '/seats_master2026');
+const assignRef = ref(db, PROJECT_ID + '/assignments2026');
+const tagsRef   = ref(db, PROJECT_ID + '/tags2026');
+const occRef    = ref(db, PROJECT_ID + '/seats2026');
+
+// ── 狀態管理 ──
+let layoutMode = 'grid'; // 'grid' 或 'round'
+const seatMap={}, asgn={}, tags={}, occupied={};
+const guests=[];
+let dragGuest=null, dragFrom=null, masterLoaded=false, saveTimer=null;
+let modalCode=null; 
+const dtt=document.getElementById('dtt');
+
+function setSyncStatus(s){
+  const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-lbl');
+  if(s==='ok'){dot.className='sync-dot';lbl.textContent='已同步';}
+  else if(s==='saving'){dot.className='sync-dot saving';lbl.textContent='儲存中...';}
+  else{dot.className='sync-dot off';lbl.textContent='連線失敗';}
+}
+
+// ── 1. REST API 資料載入 ──
+const DB_URL = "https://medicalopen-default-rtdb.firebaseio.com";
+
+async function loadAllData() {
+  try {
+    const [r1,r2,r3,r4,r5] = await Promise.all([
+      fetch(`${DB_URL}/${PROJECT_ID}/seats_master2026.json`).then(r=>r.json()),
+      fetch(`${DB_URL}/${PROJECT_ID}/assignments2026.json`).then(r=>r.json()),
+      fetch(`${DB_URL}/${PROJECT_ID}/tags2026.json`).then(r=>r.json()),
+      fetch(`${DB_URL}/${PROJECT_ID}/seats2026.json`).then(r=>r.json()),
+      fetch(`${DB_URL}/${PROJECT_ID}/checkins2026.json`).then(r=>r.json()),
+    ]);
+
+    Object.keys(seatMap).forEach(k=>delete seatMap[k]);
+    Object.keys(asgn).forEach(k=>delete asgn[k]);
+    Object.keys(tags).forEach(k=>delete tags[k]);
+    Object.keys(occupied).forEach(k=>delete occupied[k]);
+
+    if(r1) Object.entries(r1).forEach(([c,n])=>seatMap[c]=n);
+    if(r2) Object.entries(r2).forEach(([c,n])=>{ asgn[c]=n; });
+    if(r3) Object.entries(r3).forEach(([c,t])=>{ tags[c]=t; });
+    if(r4) Object.entries(r4).forEach(([c,v])=>{ if(v==='佔用') occupied[c]=true; });
+    // checkins
+    if(!window.checkins) window.checkins={};
+    Object.keys(window.checkins).forEach(k=>delete window.checkins[k]);
+    if(r5) Object.entries(r5).forEach(([c,v])=>{ window.checkins[c]=v; });
+
+    guests.length=0;
+    guests.push(...[...new Set(Object.values(asgn))].filter(Boolean).sort());
+
+    const keys = Object.keys(seatMap);
+    if(keys.length > 0) {
+      layoutMode = keys.some(k=>k.toUpperCase().startsWith('T')) ? 'round' : 'grid';
+      rebuildGuests();
+      buildVenue(keys);
+    } else {
+      document.getElementById('vr').innerHTML = '<div style="text-align:center;padding:40px;color:#9CA3AF;">目前資料庫中沒有座位結構。<br><br>請點擊右上角「⚙️ 架構設定」建立座位地圖。</div>';
+    }
+    masterLoaded=true;
+    setSyncStatus('ok');
+    refreshAll();
+    console.log('✅ 資料載入完成：', keys.length, '筆');
+  } catch(e) {
+    console.error('載入失敗：', e);
+    setSyncStatus('error');
+  }
+}
+
+// 自動恢復登入狀態
+if (sessionStorage.getItem('medical_auth') === '1') { isAdmin = true; updateAuthUI(); }
+
+loadAllData();
+setInterval(loadAllData, 15000); // 每15秒自動重新整理
+
+function rebuildGuests(){
+  guests.length=0;
+  // 合併 seatMap 和 asgn 兩個來源，統一清理空白
+  const allNames = new Set();
+  Object.values(seatMap).forEach(n=>{ if(n){ const c=n.replace(/\s+/g,' ').trim(); if(c) allNames.add(c); }});
+  Object.values(asgn).forEach(n=>{ if(n){ const c=n.replace(/\s+/g,' ').trim(); if(c) allNames.add(c); }});
+  guests.push(...[...allNames].sort());
+}
+
+// ── 儲存到 Firebase ──
+async function saveAll(){
+  setSyncStatus('saving');
+  try{
+    const oo={}; Object.keys(occupied).forEach(k => oo[k] = '佔用');
+    await Promise.all([
+      fetch(`${DB_URL}/${PROJECT_ID}/assignments2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(asgn).length?asgn:null)}),
+      fetch(`${DB_URL}/${PROJECT_ID}/tags2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(tags).length?tags:null)}),
+      fetch(`${DB_URL}/${PROJECT_ID}/seats2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.keys(oo).length?oo:null)}),
+    ]);
+    setSyncStatus('ok');
+  }catch(e){setSyncStatus('error');toast('儲存失敗','ter');}
+}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveAll,800);}
+
+
+// ── 2. 動態渲染畫布 ──
+function buildVenue(keys){
+  const wrap = document.getElementById('vr');
+  wrap.innerHTML = '';
+  document.getElementById('st-total').textContent = keys.length;
+  
+  if (layoutMode === 'round') {
+      buildRoundVenue(keys, wrap);
+  } else {
+      buildGridVenue(keys, wrap);
+  }
+}
+
+// 渲染：圓桌晚宴模式
+function buildRoundVenue(keys, wrap) {
+    document.querySelector('.stage').textContent = 'STAGE / 舞台 (圓桌模式)';
+    const container = document.createElement('div');
+    container.className = 'round-container';
+    
+    const tables = {};
+    keys.forEach(k => {
+        const tCode = k.split('-')[0]; 
+        if(!tables[tCode]) tables[tCode] = [];
+        tables[tCode].push(k);
+    });
+
+    Object.entries(tables).forEach(([tCode, seatCodes]) => {
+        const tWrap = document.createElement('div');
+        tWrap.className = 'round-table-wrap';
+        
+        const center = document.createElement('div');
+        center.className = 'round-table-center';
+        center.innerHTML = `<span>${tCode.replace('T', '桌號 ')}</span><span style="font-size:9px; font-weight:normal;">${seatCodes.length} 席</span>`;
+        tWrap.appendChild(center);
+
+        const totalSeats = seatCodes.length;
+        const radius = 75; 
+        
+        seatCodes.sort((a, b) => parseInt(a.split('-')[1]) - parseInt(b.split('-')[1]));
+
+        seatCodes.forEach((code, index) => {
+            const el = document.createElement('div');
+            el.className = 'seat round-seat s' + (index%3===0?'a':index%3===1?'b':'c'); 
+            el.id = 's-' + code;
+            el.dataset.id = code;
+            el.title = code;
+            
+            const angle = (index * (360 / totalSeats) - 90) * (Math.PI / 180);
+            const x = 75 - 15 + radius * Math.cos(angle);
+            const y = 75 - 15 + radius * Math.sin(angle);
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            
+            attachSeatEvents(el, code);
+            tWrap.appendChild(el);
+        });
+        container.appendChild(tWrap);
+    });
+    wrap.appendChild(container);
+}
+
+// 渲染：完全動態的方陣排排坐模式
+function buildGridVenue(keys, wrap) {
+    document.querySelector('.stage').textContent = 'STAGE / 舞台 (方陣排座模式)';
+    
+    let maxRow = 0;
+    const zoneSet = new Set();
+    const maxSeatPerZone = {};
+
+    keys.forEach(k => {
+        const match = k.match(/^([A-Za-z]+)(\d+)-(\d+)$/);
+        if (match) {
+            const z = match[1].toUpperCase();
+            const r = parseInt(match[2], 10);
+            const s = parseInt(match[3], 10);
+            
+            zoneSet.add(z);
+            if (r > maxRow) maxRow = r;
+            if (!maxSeatPerZone[z] || s > maxSeatPerZone[z]) maxSeatPerZone[z] = s;
+        }
+    });
+
+    const zones = Array.from(zoneSet).sort(); 
+    if(zones.length === 0) return;
+
+    let totalCols = 0;
+    zones.forEach(z => totalCols += maxSeatPerZone[z]);
+
+    const rowLabelW = 28, gapW = 16;
+    const availW = document.getElementById('venue-wrap').clientWidth - 16;
+    const calculatedSeatW = Math.floor((availW - rowLabelW - gapW * (zones.length - 1)) / totalCols);
+    const seatW = calculatedSeatW > 14 ? calculatedSeatW : 14; 
+
+    // 動態標題列 — 寬度精確對齊座位格（含 1px gap）
+    const hdr = document.createElement('div');
+    hdr.className = 'zone-header-row';
+    hdr.style.cssText = 'display:flex;margin-bottom:6px;padding-left:'+rowLabelW+'px;width:100%;gap:'+gapW+'px;';
+    zones.forEach((z, i) => {
+        const colorClass = ['zh-a', 'zh-b', 'zh-c', 'zh-d', 'zh-e'][i % 5];
+        const zoneW = seatW * maxSeatPerZone[z];
+        const hdrCell = document.createElement('div');
+        hdrCell.className = 'zh ' + colorClass;
+        hdrCell.style.cssText = 'width:'+zoneW+'px;flex-shrink:0;font-size:11px;font-weight:700;padding:4px 0;text-align:center;border-radius:5px;';
+        hdrCell.textContent = z + ' 區';
+        hdr.appendChild(hdrCell);
+    });
+    wrap.appendChild(hdr);
+
+    // 動態排數
+    for (let r = 1; r <= maxRow; r++) {
+        const row = document.createElement('div');
+        row.className = 'vrow';
+        row.style.cssText = 'display:flex;align-items:center;margin-bottom:3px;gap:'+gapW+'px;';
+        
+        const lbl = document.createElement('div');
+        lbl.className = 'rl';
+        lbl.style.cssText = 'width:'+rowLabelW+'px;flex-shrink:0;font-size:10px;color:#9CA3AF;text-align:right;padding-right:4px;';
+        lbl.textContent = r;
+        row.appendChild(lbl);
+
+        zones.forEach((z, i) => {
+            const zoneDiv = document.createElement('div');
+            zoneDiv.className = 'vzone';
+            zoneDiv.style.cssText = 'display:flex;gap:2px;flex-shrink:0;';
+
+            const seatsInThisZone = maxSeatPerZone[z];
+            for (let s = 1; s <= seatsInThisZone; s++) {
+                const code = `${z}${r}-${s}`;
+                const el = document.createElement('div');
+                
+                const colorClass = ['sa', 'sb', 'sc', 'sd', 'se'][i % 5];
+                el.className = `seat ${colorClass}`;
+                el.style.width = seatW + 'px';
+                el.id = 's-' + code;
+                el.dataset.id = code;
+                el.title = code;
+
+                // 如果 Firebase 沒有此座位，設為透明 (畸零地支援)
+                if (!keys.includes(code)) {
+                    el.style.opacity = '0';
+                    el.style.pointerEvents = 'none'; 
+                } else {
+                    attachSeatEvents(el, code);
+                }
+                zoneDiv.appendChild(el);
+            }
+            row.appendChild(zoneDiv);
+        });
+        wrap.appendChild(row);
+    }
+}
+
+function attachSeatEvents(el, code) {
+    el.draggable=false;
+    el.onclick=()=>openModal(code);
+    el.addEventListener('dragstart',onDS); 
+    el.addEventListener('dragend',onDE);
+    el.addEventListener('dragover',onDO); 
+    el.addEventListener('dragleave',onDL);
+    el.addEventListener('drop',onDP);
+}
+
+// ── 拖曳邏輯 ──
+function onDS(e){const id=this.dataset.id;if(!asgn[id]&&!occupied[id]){e.preventDefault();return;}
+  dragGuest=asgn[id]||null;dragFrom=id;this.classList.add('drag-src');
+  e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragGuest||'');showTip(e,dragGuest||'佔用');}
+function onDE(){this.classList.remove('drag-src');dragGuest=null;dragFrom=null;hideTip();clearDO();}
+function onDO(e){if(!dragFrom)return;e.preventDefault();e.dataTransfer.dropEffect='move';clearDO();this.classList.add('drag-over');moveTip(e);}
+function onDL(){clearDO();}
+function onDP(e){
+  e.preventDefault();const toId=this.dataset.id;if(!dragFrom){clearDO();return;}
+  const toG=asgn[toId]||null;
+  if(dragGuest){
+    if(toG){asgn[dragFrom]=toG;asgn[toId]=dragGuest;const tf=tags[dragFrom];if(tags[toId])tags[dragFrom]=tags[toId];else delete tags[dragFrom];if(tf)tags[toId]=tf;else delete tags[toId];toast('↔ 互換完成','tin');}
+    else{delete asgn[dragFrom];delete tags[dragFrom];asgn[toId]=dragGuest;toast('✓ 移動完成','tok');}
+  }
+  dragGuest=null;dragFrom=null;hideTip();clearDO();refreshAll();scheduleSave();
+}
+
+function chipDrag(chip,g){
+  chip.draggable=true;
+  chip.addEventListener('dragstart',e=>{dragGuest=g;dragFrom=null;chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',g);showTip(e,g);});
+  chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');dragGuest=null;dragFrom=null;hideTip();clearDO();});
+}
+
+// ── 座位設定 Modal ──
+window.openModal = function(code){
+  modalCode=code;
+  const g=asgn[code]||'', occ=occupied[code], tag=tags[code]||'';
+  
+  document.getElementById('m-code').innerHTML=`<span class="bz ${layoutMode==='round'?'bzb':'bza'}">${layoutMode==='round'?'圓桌':'方陣'}</span> 座位 ${code}`;
+  document.getElementById('m-name').textContent=occ?'（佔用中）':g||'（空位）';
+  
+  const avail=guests.filter(gg=>!Object.entries(asgn).some(([c,ag])=>c!==code&&ag===gg));
+  const sel=document.getElementById('m-select');
+  sel.innerHTML='<option value="">— 請選擇賓客 —</option>'+(g?`<option value="${g}" selected>${g}</option>`:'')+avail.filter(gg=>gg!==g).map(gg=>`<option value="${gg}">${gg}</option>`).join('');
+  
+  document.getElementById('m-assign-sec').style.display=occ?'none':'';
+  document.getElementById('m-clear-btn').style.display=g?'':'none';
+  const showTag=!occ;
+  document.getElementById('m-tag-sec').style.display=showTag?'':'none';
+  if(showTag){
+    document.getElementById('btn-ceremony').style.display=g?'':'none';
+    document.getElementById('btn-photo').style.display=g?'':'none';
+    document.getElementById('btn-occ').style.display='';
+    document.getElementById('btn-ceremony').classList.toggle('active',tag==='ceremony');
+    document.getElementById('btn-photo').classList.toggle('active',tag==='photo');
+    document.getElementById('btn-occ').classList.toggle('active',false);
+  }
+  if(occ){
+    document.getElementById('m-tag-sec').style.display='';
+    document.getElementById('btn-ceremony').style.display='none';
+    document.getElementById('btn-photo').style.display='none';
+    document.getElementById('btn-occ').style.display='';
+    document.getElementById('btn-occ').classList.add('active');
+  }
+  // 報到按鈕
+  const ci=window.checkins&&window.checkins[code];
+  const ciBtn=document.getElementById('m-checkin-btn');
+  if(g){
+    ciBtn.style.display='';
+    if(ci){
+      ciBtn.textContent='✅ 已報到 '+(ci.time||'');
+      ciBtn.className='checkin-modal-btn done';
+    }else{
+      ciBtn.textContent='☑ 標記報到';
+      ciBtn.className='checkin-modal-btn';
+    }
+  }else{
+    ciBtn.style.display='none';
+  }
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+window.closeBg=function(e){if(e.target===document.getElementById('modal-bg'))closeModal();};
+window.closeModal=function(){document.getElementById('modal-bg').classList.remove('show');modalCode=null;};
+window.doAssignModal=function(g){
+  if(!modalCode)return;
+  if(g===''){delete asgn[modalCode];delete tags[modalCode];}else{asgn[modalCode]=g;delete occupied[modalCode];}
+  refreshAll();scheduleSave();openModal(modalCode);
+};
+window.toggleModalCheckin=async function(){
+  if(!modalCode||!asgn[modalCode]) return;
+  const code=modalCode;
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const url=`${DB_URL}/${PROJECT_ID}/checkins2026/${code}.json`;
+  if(window.checkins&&window.checkins[code]){
+    // 取消報到
+    await fetch(url,{method:'DELETE'});
+    if(window.checkins) delete window.checkins[code];
+  }else{
+    // 標記報到
+    const data={time,name:asgn[code]||''};
+    await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    if(!window.checkins) window.checkins={};
+    window.checkins[code]=data;
+  }
+  refreshAll();
+  openModal(code);
+};
+
+window.clearSeat=function(){
+  if(!modalCode)return;
+  delete asgn[modalCode];delete tags[modalCode];
+  refreshAll();scheduleSave();openModal(modalCode);
+};
+window.toggleTag=function(t){
+  if(!modalCode)return;
+  if(tags[modalCode]===t)delete tags[modalCode];else tags[modalCode]=t;
+  refreshAll();scheduleSave();
+  document.getElementById('btn-ceremony').classList.toggle('active',tags[modalCode]==='ceremony');
+  document.getElementById('btn-photo').classList.toggle('active',tags[modalCode]==='photo');
+  toast(tags[modalCode]?`已標記：${tags[modalCode]==='ceremony'?'揭幕':'合影'}`:'已清除標記','tok');
+};
+window.toggleOccupied=function(){
+  if(!modalCode)return;
+  if(occupied[modalCode]){delete occupied[modalCode];toast('已取消佔用','tin');}
+  else{occupied[modalCode]=true;delete asgn[modalCode];delete tags[modalCode];toast('🪑 已標記佔用','tok');}
+  refreshAll();scheduleSave();openModal(modalCode);
+};
+
+// ── ⚙️ 架構產生器相關邏輯 (已修改為更穩定的寫法) ──
+document.getElementById('btn-setting').addEventListener('click', () => {
+    document.getElementById('layout-modal-bg').classList.add('show');
+});
+
+document.getElementById('btn-layout-close').addEventListener('click', () => {
+    document.getElementById('layout-modal-bg').classList.remove('show');
+});
+
+document.getElementById('layout-modal-bg').addEventListener('click', (e) => {
+    if(e.target === document.getElementById('layout-modal-bg')) {
+        document.getElementById('layout-modal-bg').classList.remove('show');
+    }
+});
+
+document.getElementById('l-mode').addEventListener('change', (e) => {
+    const mode = e.target.value;
+    document.getElementById('l-grid-settings').style.display = mode === 'grid' ? 'block' : 'none';
+    document.getElementById('l-round-settings').style.display = mode === 'round' ? 'block' : 'none';
+});
+
+document.getElementById('btn-layout-apply').addEventListener('click', async () => {
+    if(!confirm("⚠️ 警告：這將會直接覆寫資料庫裡的座位結構！\n\n同 ID 座位的名單會保留，但縮小規模可能導致部分座位消失。\n確定要執行嗎？")) return;
+    
+    const mode = document.getElementById('l-mode').value;
+    const newMaster = {};
+    const ZK = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+    if (mode === 'grid') {
+        const rows = parseInt(document.getElementById('l-rows').value, 10);
+        const zonesInput = document.getElementById('l-zones').value;
+        const zones = zonesInput.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n));
+        
+        if(zones.length === 0) { alert("區塊設定錯誤，請重新輸入！"); return; }
+        
+        for (let r = 1; r <= rows; r++) {
+            for (let z = 0; z < zones.length; z++) {
+                for (let s = 1; s <= zones[z]; s++) {
+                    const code = `${ZK[z]}${r}-${s}`;
+                    newMaster[code] = seatMap[code] || ""; 
+                }
+            }
+        }
+    } else if (mode === 'round') {
+        const tables = parseInt(document.getElementById('l-tables').value, 10);
+        const seats = parseInt(document.getElementById('l-seats').value, 10);
+        
+        for (let t = 1; t <= tables; t++) {
+            for (let s = 1; s <= seats; s++) {
+                const code = `T${t}-${s}`;
+                newMaster[code] = seatMap[code] || "";
+            }
+        }
+    }
+
+    setSyncStatus('saving');
+    try {
+        await fetch(`${DB_URL}/${PROJECT_ID}/seats_master2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(newMaster)});
+        toast('🎉 座位架構已成功更新並同步！', 'tok');
+        document.getElementById('layout-modal-bg').classList.remove('show');
+    } catch (e) {
+        setSyncStatus('error');
+        toast('架構更新失敗，請檢查網路。', 'ter');
+    }
+});
+
+
+// ── 畫面更新邏輯 ──
+function refreshAll(){renderSeats();updateStats();renderChips();}
+function renderSeats(){
+  Object.keys(seatMap).forEach(code => {
+    const el = document.getElementById('s-'+code);
+    if(!el) return;
+    const g=asgn[code], occ=occupied[code], tag=tags[code];
+    
+    el.classList.remove('occupied', 'ceremony', 'photo', 'filled', 'checked-in');
+    if(window.checkins&&window.checkins[code]) el.classList.add('checked-in');
+    
+    if(occ) el.classList.add('occupied');
+    else if(tag==='ceremony') el.classList.add('ceremony');
+    else if(tag==='photo') el.classList.add('photo');
+    else if(g) el.classList.add('filled');
+    
+    el.draggable=!!(g||occ);
+    
+    if(layoutMode === 'round') {
+       el.textContent = occ?'占':g?(g.trim().slice(0,6)||'?'): code.split('-')[1];
+    } else {
+       el.textContent = occ?'占':g?(g.trim().slice(0,8)||''):'';
+    }
+    
+    el.title=code+(occ?' — 佔用':g?' — '+g:'');
+  });
+}
+
+function updateStats(){
+  const total = Object.keys(seatMap).length;
+  const n=Object.keys(asgn).length, oc=Object.keys(occupied).length, gc=guests.length;
+  document.getElementById('sa').textContent=n+oc;
+  document.getElementById('se').textContent=total-n-oc;
+  document.getElementById('sg').textContent=gc;
+  document.getElementById('pf').style.width=(gc?n/gc*100:0)+'%';
+  document.getElementById('ptxt').textContent=n+' / '+gc+' 位賓客已分配';
+}
+
+window.renderChips=function renderChips(){
+  const aset=new Set(Object.values(asgn).map(n=>n?n.replace(/\s+/g,' ').trim():''));
+  const kw=(document.getElementById('gs')||{value:''}).value.trim().toLowerCase();
+  document.querySelectorAll('.seat.found').forEach(el=>el.classList.remove('found'));
+  const box=document.getElementById('chips');box.innerHTML='';
+
+  if(kw){
+    let foundSeats=[];
+    Object.entries(asgn).forEach(([code,name])=>{
+      if(name&&name.toLowerCase().includes(kw)){
+        const el=document.getElementById('s-'+code);
+        if(el){el.classList.add('found');foundSeats.push({code,name});}
+      }
+    });
+    const unassignedMatches=guests.filter(g=>!aset.has(g)&&g.toLowerCase().includes(kw));
+
+    document.getElementById('uc-count').textContent=(foundSeats.length+unassignedMatches.length)+' 筆結果';
+
+    if(!foundSeats.length&&!unassignedMatches.length){
+      box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">找不到符合的賓客</div>';
+      return;
+    }
+    foundSeats.forEach(({code,name})=>{
+      const chip=document.createElement('span'); chip.className='chip'; chip.style.cssText='background:#FEFCE8;border-color:#CA8A04;color:#713F12;';
+      chip.textContent=name;
+      const badge=document.createElement('span'); badge.style.cssText='font-size:9px;background:#FDE047;color:#713F12;padding:1px 5px;border-radius:4px;margin-left:5px;font-weight:700;';
+      badge.textContent=code; chip.appendChild(badge);
+      chip.onclick=()=>{
+        const el=document.getElementById('s-'+code);
+        if(el){el.scrollIntoView({behavior:'smooth',block:'center'}); el.style.outline='3px solid #CA8A04';setTimeout(()=>el.style.outline='',1500);}
+      };
+      box.appendChild(chip);
+    });
+    unassignedMatches.forEach(g=>{
+      const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
+      chip.onclick=()=>{
+        if(modalCode&&!occupied[modalCode]){asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
+        else toast('請先點選一個座位','ter');
+      };
+      const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
+      xBtn.onclick=e=>{e.stopPropagation();removeGuest(g);};
+      chip.appendChild(xBtn);chipDrag(chip,g);box.appendChild(chip);
+    });
+    return;
+  }
+
+  let list=guests.filter(g=>!aset.has(g));
+  document.getElementById('uc-count').textContent=list.length+' 未分配';
+  if(!list.length){box.innerHTML='<div style="font-size:11px;color:#9CA3AF;padding:4px;">🎉 所有賓客皆已分配！</div>';return;}
+  list.forEach(g=>{
+    const chip=document.createElement('span');chip.className='chip';chip.textContent=g;
+    chip.onclick=()=>{
+      if(modalCode&&!occupied[modalCode]){asgn[modalCode]=g;delete occupied[modalCode];refreshAll();scheduleSave();openModal(modalCode);}
+      else toast('請先點選一個座位','ter');
+    };
+    const xBtn=document.createElement('button');xBtn.className='chip-x';xBtn.textContent='✕';
+    xBtn.onclick=e=>{e.stopPropagation();removeGuest(g);};
+    chip.appendChild(xBtn);chipDrag(chip,g);box.appendChild(chip);
+  });
+}
+function removeGuest(g){
+  const idx=guests.indexOf(g);if(idx===-1)return;guests.splice(idx,1);
+  Object.entries(asgn).forEach(([c,n])=>{if(n===g){delete asgn[c];delete tags[c];}});
+  refreshAll();scheduleSave();toast('已移除：'+g.substring(0,15)+'...','tin');
+}
+window.addGuest=function(){
+  const inp=document.getElementById('gi');
+  const n=inp.value.trim();
+  if(!n)return toast('請輸入賓客名稱','ter');
+  if(guests.includes(n))return toast('此賓客已在名單中','ter');
+  guests.push(n); guests.sort(); inp.value=''; refreshAll(); toast('已新增','tok');
+};
+window.doReset=function(){
+  if(!confirm('確定要清除所有分配、標記和佔用嗎？\n(這不會影響已建立的座位庫架構)'))return;
+  Object.keys(asgn).forEach(k=>delete asgn[k]);
+  Object.keys(tags).forEach(k=>delete tags[k]);
+  Object.keys(occupied).forEach(k=>delete occupied[k]);
+  refreshAll();scheduleSave();
+};
+
+window.doExport=function(){
+  if(!Object.keys(seatMap).length){ toast('尚無座位資料','tin'); return; }
+  try{
+    const rows=[['座位編號','賓客姓名','標記','狀態','報到時間']];
+    Object.keys(seatMap).sort().forEach(code=>{
+      const name=asgn[code]||'';
+      const tag=tags[code]||'';
+      const occ=occupied[code]?'佔用':'';
+      const ci=window.checkins&&window.checkins[code];
+      const ciTime=ci?ci.time||'已報到':'';
+      rows.push([code, name, tag, occ, ciTime]);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:14},{wch:42},{wch:10},{wch:8},{wch:10}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '座位分配表');
+    const now=new Date();
+    const ts=now.getFullYear()+
+      (now.getMonth()+1).toString().padStart(2,'0')+
+      now.getDate().toString().padStart(2,'0')+'_'+
+      now.getHours().toString().padStart(2,'0')+
+      now.getMinutes().toString().padStart(2,'0');
+    XLSX.writeFile(wb,'座位分配表_'+ts+'.xlsx');
+    toast('✅ 匯出完成','tok');
+  }catch(e){ toast('❌ 匯出失敗：'+e.message,'terr'); }
+};
+
+function clearDO(){document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));}
+function showTip(e,t){dtt.textContent=t;dtt.style.display='block';moveTip(e);}
+function moveTip(e){dtt.style.left=(e.clientX+14)+'px';dtt.style.top=(e.clientY-28)+'px';}
+function hideTip(){dtt.style.display='none';}
+document.addEventListener('dragover',e=>{if(dragGuest||dragFrom)moveTip(e);});
+function toast(msg,cls){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+cls;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2800);}
+
+
+// ── Excel 上傳 → JSON → Firebase ──────────────────────────
+document.getElementById('excel-upload-input').addEventListener('change', async function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  toast('解析 Excel 中…', 'tin');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+
+    // 優先找 0623 sheet，找不到就用第一個
+    const sheetName = wb.SheetNames.find(n => n.includes('0623')) || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    const seatPat = /^[A-Za-z]+\d+-\d+$/;
+    const ZONES_COL = { A: [1,9], B: [10,19], C: [20,28] };
+
+    const newAssign = {};
+    const newMaster = {};
+
+    let i = 0;
+    while (i < raw.length) {
+      const row = raw[i].map(v => (v === null || v === undefined) ? '' : String(v).trim());
+      const codes = row.filter(v => seatPat.test(v));
+      if (codes.length >= 5 && i + 1 < raw.length) {
+        const nameRow = raw[i+1].map(v => (v === null || v === undefined) ? '' : String(v).replace(/\s+/g,' ').trim());
+        for (const [, [start, end]] of Object.entries(ZONES_COL)) {
+          for (let col = start; col < end; col++) {
+            const code = row[col] || '';
+            const name = nameRow[col] || '';
+            if (!seatPat.test(code)) continue;
+            newMaster[code] = name;
+            if (name) newAssign[code] = name;
+          }
+        }
+        i += 2;
+      } else {
+        i++;
+      }
+    }
+
+    const totalMaster = Object.keys(newMaster).length;
+    const totalAssign = Object.keys(newAssign).length;
+
+    if (totalMaster === 0) {
+      toast('❌ 找不到座位資料，請確認格式', 'terr');
+      return;
+    }
+
+    const ok = confirm(
+      `解析完成（Sheet: ${sheetName}）\n` +
+      `座位格局：${totalMaster} 格\n` +
+      `賓客資料：${totalAssign} 筆\n\n` +
+      `確定要覆寫 Firebase 嗎？`
+    );
+    if (!ok) return;
+
+    toast('寫入 Firebase 中…', 'tin');
+    await fetch(`${DB_URL}/${PROJECT_ID}/seats_master2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(newMaster)});
+    await fetch(`${DB_URL}/${PROJECT_ID}/assignments2026.json`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(newAssign)});
+    toast(`✅ 寫入完成！${totalAssign} 筆 / ${totalMaster} 格`, 'tok');
+
+  } catch(e) {
+    toast('❌ 錯誤：' + e.message, 'terr');
+    console.error(e);
+  }
+});
+</script>
+
+</body>
+</html>
