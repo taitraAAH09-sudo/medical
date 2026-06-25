@@ -257,23 +257,24 @@ window.doSearch=function(){
 
   // 解析座位碼 → 友善描述
   function parseSeatCode(code) {
-    // 圓桌：R1_T2-5
-    const m = code.match(/^R(\d+)_T(\d+)-(\d+)$/);
-    if (m) {
-      const [,row,table,seat] = m;
-      const tCode = code.split('-')[0]; // e.g. R1_T2
-      const customName = TABLE_NAMES[tCode] || null;
-      const tableLabel = customName || `第 ${table} 桌`;
-      const badgeLabel = customName ? customName.substring(0,6) : `第${table}桌`;
-      return { icon:'🔵', label:tableLabel, detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
-    }
-    // 主桌自訂名稱：H1
+    // 主桌：H1-3（自訂名稱優先）
     const mh = code.match(/^(H\d+)-(\d+)$/);
     if (mh) {
       const [,tCode,seat] = mh;
       const customName = TABLE_NAMES[tCode] || null;
-      const tableLabel = customName || '主桌';
-      return { icon:'⭐', label:tableLabel, detail:`${tableLabel}・第 ${seat} 席`, badgeTop:tableLabel.substring(0,4), badgeBot:`第${seat}席`, color:'gold' };
+      const tableLabel = customName ? `第 ${customName} 桌` : '主桌';
+      const badgeLabel = customName ? `第${customName}桌` : '主桌';
+      return { icon:'⭐', label:tableLabel, detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'gold' };
+    }
+    // 圓桌：R1_T2-5（用自訂桌名顯示）
+    const m = code.match(/^R(\d+)_T(\d+)-(\d+)$/);
+    if (m) {
+      const [,row,table,seat] = m;
+      const tCode = code.split('-')[0];
+      const customName = TABLE_NAMES[tCode] ? TABLE_NAMES[tCode].replace(/\.+$/, '').trim() : null;
+      const tableLabel = customName ? `第 ${customName} 桌` : `第 ${table} 桌`;
+      const badgeLabel = customName ? `第${customName}桌` : `第${table}桌`;
+      return { icon:'🔵', label:tableLabel, detail:`${tableLabel}・第 ${seat} 席`, badgeTop:badgeLabel, badgeBot:`第${seat}席`, color:'blue' };
     }
     // 方陣：A1-3、B2-5
     const m2 = code.match(/^([A-Z])(\d+)-(\d+)$/);
