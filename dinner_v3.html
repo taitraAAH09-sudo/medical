@@ -369,7 +369,16 @@ function updateAuthUI() {
     adminBtns.forEach(el => el.style.display = 'none');
   }
   // 切換權限後，重新繪製地圖套用 Hover 等特效
-  if(masterLoaded) { buildVenue(Object.keys(seatMap)); refreshAll(); }
+  // 注意：只有圓桌中心的 hover class 受 isAdmin 影響，需要重建才能套用
+  // 但為避免圓圈跑位，先等 DOM reflow 穩定後再重建
+  if(masterLoaded) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        buildVenue(Object.keys(seatMap));
+        refreshAll();
+      });
+    });
+  }
 }
 
 window.handleAuth = function() {
@@ -484,7 +493,7 @@ onValue(ref(db, PROJECT_ID+'/checkins2026'), snap=>{
   const d=snap.val()||{};
   Object.keys(window.checkins).forEach(k=>delete window.checkins[k]);
   Object.entries(d).forEach(([c,v])=>{ window.checkins[c]=v; });
-  if(masterLoaded)refreshAll();
+  if(masterLoaded){ renderSeats(); updateStats(); } // 只更新座位顏色，不重建 DOM 也不重跑 renderChips
 });
 
 // 修正：加上 filter(Boolean) 排除空字串
@@ -911,7 +920,9 @@ window.toggleModalCheckin=async function(){
     if(!window.checkins) window.checkins={};
     window.checkins[code]=data;
   }
-  refreshAll();
+  // 只更新該座位顏色，不重建整個 DOM（避免圓圈跑位）
+  renderSeats();
+  updateStats();
   openModal(code);
 };
 
@@ -1283,8 +1294,12 @@ function hideTip(){dtt.style.display='none';}
 document.addEventListener('dragover',e=>{if(dragGuest||dragFrom)moveTip(e);});
 function toast(msg,cls){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+cls;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2800);}
 
+let _resizeTimer = null;
 window.addEventListener('resize', () => {
-    if(Object.keys(seatMap).length > 0) buildVenue(Object.keys(seatMap));
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => {
+        if(Object.keys(seatMap).length > 0) buildVenue(Object.keys(seatMap));
+    }, 200);
 });
 </script>
 </body>
