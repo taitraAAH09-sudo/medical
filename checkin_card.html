@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 醫療展晚會 · 報到</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:linear-gradient(135deg,#0F2F4A 0%,#0F6E56 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{background:#fff;border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.card-header{background:linear-gradient(135deg,#124568,#0F6E56);padding:28px 24px 24px;text-align:center;}
+.event-logo{font-size:11px;letter-spacing:3px;color:rgba(255,255,255,0.65);text-transform:uppercase;margin-bottom:6px;}
+.event-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.event-sub{font-size:12px;color:rgba(255,255,255,0.65);}
+.card-body{padding:28px 24px;}
+.field{margin-bottom:20px;}
+.field-label{font-size:10px;font-weight:600;color:#9CA3AF;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;}
+.field-value{font-size:15px;font-weight:500;color:#111;line-height:1.5;}
+.field-value.large{font-size:19px;font-weight:700;color:#124568;line-height:1.4;}
+.divider{height:1px;background:#F3F4F6;margin:20px 0;}
+.seat-badge{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#EFF6FF;border-radius:12px;padding:14px 18px;margin-top:4px;width:100%;}
+.seat-table{font-size:12px;font-weight:600;padding:4px 12px;border-radius:6px;color:#fff;white-space:nowrap;background:#185FA5;}
+.seat-code{font-size:22px;font-weight:700;color:#124568;}
+.seat-detail{font-size:11px;color:#6B7280;}
+.checkin-box{display:flex;align-items:center;gap:10px;border-radius:12px;padding:14px 16px;margin-top:4px;}
+.checkin-box.done{background:#D1FAE5;}
+.checkin-box.pending{background:#FEF9C3;}
+.checkin-icon{font-size:22px;}
+.checkin-text{font-size:14px;font-weight:600;}
+.checkin-box.done .checkin-text{color:#065F46;}
+.checkin-box.pending .checkin-text{color:#92400E;}
+.checkin-sub{font-size:11px;color:#6B7280;margin-top:2px;}
+.card-footer{background:#F8FAFC;padding:16px 24px;text-align:center;border-top:1px solid #F3F4F6;}
+.footer-text{font-size:11px;color:#9CA3AF;}
+.error-body{text-align:center;padding:40px 24px;}
+.error-icon{font-size:48px;margin-bottom:16px;}
+.error-title{font-size:18px;font-weight:600;color:#EF4444;margin-bottom:8px;}
+.error-msg{color:#6B7280;font-size:13px;line-height:1.6;}
+.debug{margin-top:12px;font-size:11px;color:#9CA3AF;word-break:break-all;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <div class="event-logo">2026 醫療展晚會</div>
+    <div class="event-name">賓客報到卡</div>
+    <div class="event-sub">Guest Check-in Pass</div>
+  </div>
+  <div class="card-body" id="card-body">
+    <div class="error-body">
+      <div class="error-icon">⏳</div>
+      <div class="error-title">載入中...</div>
+    </div>
+  </div>
+  <div class="card-footer">
+    <div class="footer-text">2026 醫療展晚會 · Seating Pass</div>
+  </div>
+</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getDatabase,ref,get,set}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const fb=initializeApp({
+    apiKey: "AIzaSyCo2eMHEHEfBQfWiVmQ6PhUsdeIM6eb57Q",
+    authDomain: "taitra-table.firebaseapp.com",
+    databaseURL: "https://taitra-table-default-rtdb.firebaseio.com",
+    projectId: "taitra-table",
+    storageBucket: "taitra-table.firebasestorage.app",
+    messagingSenderId: "802855818617",
+    appId: "1:802855818617:web:b7cf3b45e13b70ae660ba8"
+});
+const db = getDatabase(fb);
+const PROJECT_ID = "event_B"; // 與 dinner_v3.html 共用同一個活動空間
+
+function getSeat(){
+  const p = new URLSearchParams(location.search);
+  if(p.get('seat')) return p.get('seat');
+  const h = new URLSearchParams(location.hash.replace('#',''));
+  if(h.get('seat')) return h.get('seat');
+  if(location.hash && location.hash.length > 1) return location.hash.slice(1);
+  return null;
+}
+
+function showError(title, msg, seat){
+  document.getElementById('card-body').innerHTML = `
+    <div class="error-body">
+      <div class="error-icon">🔍</div>
+      <div class="error-title">${title}</div>
+      <div class="error-msg">${msg}</div>
+      <div class="debug">座位：${seat || '(未提供)'}</div>
+    </div>`;
+}
+
+function render(name, tableLabel, seat, seatNum, checkin){
+  const isDone = !!checkin;
+  document.getElementById('card-body').innerHTML = `
+    <div class="field">
+      <div class="field-label">賓客姓名 / Guest</div>
+      <div class="field-value large">${name}</div>
+    </div>
+    <div class="divider"></div>
+    <div class="field">
+      <div class="field-label">座位 / Seat</div>
+      <div class="seat-badge">
+        <span class="seat-table">${tableLabel}</span>
+        <span class="seat-code">${seat}</span>
+        <span class="seat-detail">第 ${seatNum} 號座</span>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="field">
+      <div class="field-label">報到狀態 / Check-in</div>
+      <div class="checkin-box ${isDone ? 'done' : 'pending'}">
+        <div class="checkin-icon">${isDone ? '✅' : '⏳'}</div>
+        <div>
+          <div class="checkin-text">${isDone ? '報到成功' : '報到處理中'}</div>
+          <div class="checkin-sub">${isDone ? '時間 ' + checkin.time : '請稍候，正在寫入報到紀錄'}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+(async function main(){
+  const seat = getSeat();
+  if(!seat){ showError('缺少座位資訊','網址未包含座位參數，請確認 QR Code 是否正確', seat); return; }
+
+  try{
+    const [masterSnap, assignSnap, tableNameSnap, checkinSnap] = await Promise.all([
+      get(ref(db, PROJECT_ID + '/seats_master2026/' + seat)),
+      get(ref(db, PROJECT_ID + '/assignments2026/' + seat)),
+      get(ref(db, PROJECT_ID + '/table_names2026/' + seat.split('-')[0])),
+      get(ref(db, PROJECT_ID + '/checkins2026/' + seat)),
+    ]);
+
+    if(!masterSnap.exists()){
+      showError('找不到座位資料', '查無此座位編號，請確認 QR Code 是否正確掃描', seat);
+      return;
+    }
+    const name = assignSnap.exists() ? assignSnap.val() : '';
+    if(!name){
+      showError('尚未分配賓客', '此座位目前尚未指派賓客，請聯繫工作人員', seat);
+      return;
+    }
+
+    const tableCode = seat.split('-')[0];
+    const seatNum = seat.split('-')[1] || '';
+    const tableLabel = tableNameSnap.exists() && tableNameSnap.val() ? tableNameSnap.val() : tableCode;
+
+    let checkin = checkinSnap.exists() ? checkinSnap.val() : null;
+
+    // 首次掃描：立即以與管理端相同的資料格式寫入 checkins2026，
+    // dinner_v3.html 的座位圖會即時同步顯示已報到（灰色）
+    if(!checkin){
+      const now = new Date();
+      const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+      checkin = { time, name };
+      render(name, tableLabel, seat, seatNum, checkin); // 先樂觀顯示
+      await set(ref(db, PROJECT_ID + '/checkins2026/' + seat), checkin);
+    }
+
+    render(name, tableLabel, seat, seatNum, checkin);
+  }catch(e){
+    showError('連線失敗', '無法讀取報到資料，請檢查網路連線後重新整理', seat);
+  }
+})();
+</script>
+</body>
+</html>
